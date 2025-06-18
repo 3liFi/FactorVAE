@@ -1,0 +1,41 @@
+from vae import vae_loss
+
+
+def test_model(model, dataloader):
+    model.eval()
+    total_loss = 0
+    with torch.no_grad():
+        for x, _ in dataloader:
+            x = x.to(model.device)
+            recon, mu, logvar = model(x)
+            loss = vae_loss(recon, x, mu, logvar)
+            total_loss += loss.item()
+    avg_loss = total_loss / len(dataloader.dataset)
+    print(f"Validation loss: {avg_loss:.4f}")
+
+from training import VAELightning
+
+def load_model(path="vae_model.ckpt"):
+    model = VAELightning.load_from_checkpoint(path, latent_dim=20)
+    return model
+
+# sample.py
+import torch
+from vae import VAE
+from training import VAELightning
+import matplotlib.pyplot as plt
+import torchvision
+
+def sample_images(model_path="vae_model.ckpt", latent_dim=20, n=64):
+    trainer = VAELightning(latent_dim)
+    trainer.load_state_dict(torch.load(model_path)['state_dict'])
+    trainer.eval()
+
+    z = torch.randn(n, latent_dim)
+    with torch.no_grad():
+        samples = trainer.model.decoder(z)
+
+    grid = torchvision.utils.make_grid(samples, nrow=8)
+    plt.imshow(grid.permute(1, 2, 0))
+    plt.axis('off')
+    plt.show()
