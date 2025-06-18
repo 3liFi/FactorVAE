@@ -66,10 +66,18 @@ class VAE(nn.Module):
 
     def forward(self, x):
         mu, logvar = self.encoder(x)
-        z = mu # todo change
+        z = self.reparameterize(mu, logvar)
 
         recon_x = self.decoder(z)
-        return recon_x, mu, logvar # todo change 0 to logvar
+        return recon_x, mu, logvar
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        # sample from a normal distribution with mean 0 and variance 1
+        eps = torch.randn_like(std)
+
+        # offset mu by small value within standard deviation
+        return mu + eps * std
 
 def vae_loss(recon_x, x, mu, logvar):
     #print("loss 1: ", x.max)

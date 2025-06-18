@@ -23,6 +23,7 @@ class VAELightning(pl.LightningModule):
 
 
 def train_model(transform):
+    torch.set_float32_matmul_precision('high')
     train_dataset = PathMNIST(split='train', download=True, transform=transform)
     val_dataset = PathMNIST(split='val', download=True, transform=transform)
 

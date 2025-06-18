@@ -1,3 +1,5 @@
+from torch.utils.data import DataLoader
+
 from vae import vae_loss
 
 
@@ -39,3 +41,23 @@ def sample_images(model_path="vae_model.ckpt", latent_dim=20, n=64):
     plt.imshow(grid.permute(1, 2, 0))
     plt.axis('off')
     plt.show()
+
+def replicate_images(dataset, model_path="vae_model.ckpt", latent_dim=20):
+    trainer = VAELightning(latent_dim)
+    trainer.load_state_dict(torch.load(model_path)['state_dict'])
+    trainer.eval()
+
+    val_loader = DataLoader(dataset, batch_size=10, shuffle=False)
+    x_batch, _ = next(iter(val_loader))
+    x_batch = x_batch.to(trainer.device)
+    mu, logvar = trainer.model.encoder(x_batch)
+    z = mu
+    reconstructed = trainer.model.decoder(z)
+
+    combined_images = torch.cat([x_batch, reconstructed])
+
+    grid = torchvision.utils.make_grid(combined_images, nrow=5)
+    plt.imshow(grid.permute(1, 2, 0))
+    plt.axis('off')
+    plt.show()
+
