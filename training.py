@@ -3,6 +3,7 @@ from medmnist import PathMNIST
 from vae import VAE, vae_loss
 import pytorch_lightning as pl
 import torch
+from vae import LATENT_DIM
 
 
 class VAELightning(pl.LightningModule):
@@ -27,10 +28,10 @@ def train_model(transform):
     train_dataset = PathMNIST(split='train', download=True, transform=transform)
     val_dataset = PathMNIST(split='val', download=True, transform=transform)
 
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=5, persistent_workers=True)
     val_loader = DataLoader(val_dataset, batch_size=64)
 
-    vae_module = VAELightning(latent_dim=20)
+    vae_module = VAELightning(latent_dim=LATENT_DIM)
 
     trainer = pl.Trainer(
         max_epochs=20,

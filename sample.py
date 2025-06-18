@@ -1,6 +1,7 @@
 from torch.utils.data import DataLoader
 
 from vae import vae_loss
+from vae import LATENT_DIM
 
 
 def test_model(model, dataloader):
@@ -18,7 +19,7 @@ def test_model(model, dataloader):
 from training import VAELightning
 
 def load_model(path="vae_model.ckpt"):
-    model = VAELightning.load_from_checkpoint(path, latent_dim=20)
+    model = VAELightning.load_from_checkpoint(path, latent_dim=LATENT_DIM)
     return model
 
 # sample.py
@@ -28,12 +29,12 @@ from training import VAELightning
 import matplotlib.pyplot as plt
 import torchvision
 
-def sample_images(model_path="vae_model.ckpt", latent_dim=20, n=64):
-    trainer = VAELightning(latent_dim)
+def sample_images(model_path="vae_model.ckpt", n=64):
+    trainer = VAELightning(LATENT_DIM)
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
 
-    z = torch.randn(n, latent_dim)
+    z = torch.randn(n, LATENT_DIM)
     with torch.no_grad():
         samples = trainer.model.decoder(z)
 
@@ -42,8 +43,8 @@ def sample_images(model_path="vae_model.ckpt", latent_dim=20, n=64):
     plt.axis('off')
     plt.show()
 
-def replicate_images(dataset, model_path="vae_model.ckpt", latent_dim=20):
-    trainer = VAELightning(latent_dim)
+def replicate_images(dataset, model_path="vae_model.ckpt"):
+    trainer = VAELightning(LATENT_DIM)
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
 
