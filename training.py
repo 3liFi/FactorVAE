@@ -4,12 +4,19 @@ from vae import VAE, vae_loss
 import pytorch_lightning as pl
 import torch
 from vae import LATENT_DIM
+from vae import HyperParams
+from torchvision import transforms
+import optuna
+import optuna.visualization as vis
+from image_similarity import compute_ssim
+import joblib
 
+#  Best is trial 2 with value: 0.48198455891420766. {'kernel_size': 3, 'stride': 2, 'padding': 0}
 
 class VAELightning(pl.LightningModule):
-    def __init__(self, latent_dim):
+    def __init__(self, latent_dim, params: HyperParams):
         super().__init__()
-        self.model = VAE(latent_dim)
+        self.model = VAE(latent_dim, params)
 
     def training_step(self, batch, batch_idx):
         x, _ = batch
@@ -21,9 +28,69 @@ class VAELightning(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=1e-3)
 
+def get_model_similarity_score(dataset, vae_lightning: VAELightning) -> int:
+    val_loader = DataLoader(dataset, batch_size=10, shuffle=False)
+    x_batch, _ = next(iter(val_loader))
 
+    #x_batch = x_batch.to(trainer.device)
+    mu, logvar = vae_lightning.model.encoder(x_batch)
+    z = mu
+    reconstructed = vae_lightning.model.decoder(z)
 
-def train_model(transform):
+    total_ssim_score = 0
+    for i in range(0, len(x_batch)):
+        total_ssim_score += compute_ssim(reconstructed[i], x_batch[i])
+
+    return total_ssim_score / len(x_batch)
+
+def optimize_hyper_params_with_optuna():
+    study = optuna.create_study(direction="maximize")  # or "maximize" if you're maximizing SSIM etc.
+    study.optimize(objective, n_trials=50)
+
+    # Plot how the score improved over time
+    vis.plot_optimization_history(study).show()
+
+    # See which parameters mattered most
+    vis.plot_param_importances(study).show()
+
+    # Parallel coordinate plot (explores interactions)
+    vis.plot_parallel_coordinate(study).show()
+
+    joblib.dump(study, "vae_study_0.pkl")
+
+def objective(trial):
+    transform = transforms.Compose([
+        transforms.Grayscale(num_output_channels=1),
+        transforms.CenterCrop((28, 28)),
+        transforms.ToTensor()
+    ])
+
+    train_dataset = PathMNIST(split='train', download=True, transform=transform)
+    val_dataset = PathMNIST(split='val', download=True, transform=transform)
+
+    kernel_size = trial.suggest_categorical("kernel_size", [3, 5, 7])
+    stride = trial.suggest_int("stride", 1, 2)
+    padding = trial.suggest_categorical("padding", [0, kernel_size // 2])
+    epochs = trial.suggest_int("epochs", 5, 35, 5)
+
+    trainer = pl.Trainer(
+        max_epochs=epochs,
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
+        enable_progress_bar=False
+    )
+
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=5, persistent_workers=True)
+    val_loader = DataLoader(val_dataset, batch_size=64)
+
+    model = VAELightning(LATENT_DIM, HyperParams(kernel_size, stride, padding))
+
+    trainer.fit(model, train_loader, val_loader)
+
+    # Use visual comparison metric or val loss
+    #return trainer.callback_metrics["train_loss"].item()
+    return get_model_similarity_score(val_dataset, model)
+
+def train_model(transform, params: HyperParams):
     torch.set_float32_matmul_precision('high')
     train_dataset = PathMNIST(split='train', download=True, transform=transform)
     val_dataset = PathMNIST(split='val', download=True, transform=transform)
@@ -31,7 +98,7 @@ def train_model(transform):
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=5, persistent_workers=True)
     val_loader = DataLoader(val_dataset, batch_size=64)
 
-    vae_module = VAELightning(latent_dim=LATENT_DIM)
+    vae_module = VAELightning(LATENT_DIM, params)
 
     trainer = pl.Trainer(
         max_epochs=20,

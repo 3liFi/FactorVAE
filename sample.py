@@ -3,7 +3,6 @@ from torch.utils.data import DataLoader
 from vae import vae_loss
 from vae import LATENT_DIM
 
-
 def test_model(model, dataloader):
     model.eval()
     total_loss = 0
@@ -16,7 +15,6 @@ def test_model(model, dataloader):
     avg_loss = total_loss / len(dataloader.dataset)
     print(f"Validation loss: {avg_loss:.4f}")
 
-from training import VAELightning
 
 def load_model(path="vae_model.ckpt"):
     model = VAELightning.load_from_checkpoint(path, latent_dim=LATENT_DIM)
@@ -61,4 +59,3 @@ def replicate_images(dataset, model_path="vae_model.ckpt"):
     plt.imshow(grid.permute(1, 2, 0))
     plt.axis('off')
     plt.show()
-
