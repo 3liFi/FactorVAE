@@ -1,7 +1,7 @@
 from medmnist import INFO
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from training import train_model
+from training import train_model, optimize_hyper_params_with_optuna
 from sample import sample_images, replicate_images
 import argparse
 
@@ -21,7 +21,7 @@ val_dataset = DataClass(split='val', transform=transform, download=download)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', choices=['train', 'random', 'replicate'], default='train')
+    parser.add_argument('--mode', choices=['train', 'random', 'replicate', 'optimize'], default='train')
     args = parser.parse_args()
 
     if args.mode == 'train':
@@ -30,4 +30,6 @@ if __name__ == "__main__":
         sample_images()
     elif args.mode == 'replicate':
         replicate_images(val_dataset)
+    elif args.mode == 'optimize':
+        optimize_hyper_params_with_optuna()
 
