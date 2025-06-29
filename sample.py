@@ -26,9 +26,11 @@ from vae import VAE
 from training import VAELightning
 import matplotlib.pyplot as plt
 import torchvision
+from vae import HyperParams
 
 def sample_images(model_path="vae_model.ckpt", n=64):
-    trainer = VAELightning(LATENT_DIM)
+    # we can pass default hyper params object here because it won't be used anyway
+    trainer = VAELightning(LATENT_DIM, HyperParams())
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
 
@@ -42,7 +44,8 @@ def sample_images(model_path="vae_model.ckpt", n=64):
     plt.show()
 
 def replicate_images(dataset, model_path="vae_model.ckpt"):
-    trainer = VAELightning(LATENT_DIM)
+    # we can pass default hyper params object here because it won't be used anyway
+    trainer = VAELightning(LATENT_DIM, HyperParams())
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
 
@@ -59,3 +62,4 @@ def replicate_images(dataset, model_path="vae_model.ckpt"):
     plt.imshow(grid.permute(1, 2, 0))
     plt.axis('off')
     plt.show()
+    plt.savefig("output.png")

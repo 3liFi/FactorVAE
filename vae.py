@@ -7,7 +7,7 @@ import math
 
 # FEATURE_MAP_H = 7
 # FEATURE_MAP_W = 7
-LATENT_DIM = 30
+LATENT_DIM = 64
 SOURCE_IMAGE_DIM = 28
 
 
@@ -47,18 +47,18 @@ class Encoder(nn.Module):
         )
 
         self.fc_mu = nn.Sequential(
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+            nn.Linear(256 * feature_map_dim * feature_map_dim, latent_dim),
             nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, latent_dim),
+            #nn.Linear(128, 64),
+            #nn.ReLU(),
+            #nn.Linear(64, latent_dim),
         )
         self.fc_logvar = nn.Sequential(
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+            nn.Linear(256 * feature_map_dim * feature_map_dim, latent_dim),
             nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, latent_dim),
+            #nn.Linear(128, 64),
+            #nn.ReLU(),
+            #nn.Linear(64, latent_dim),
         )
 
     def forward(self, x):
@@ -82,10 +82,10 @@ class Decoder(nn.Module):
 
         # latent space -> feature map
         self.fc = nn.Sequential(
-            nn.Linear(latent_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 256 * self.feature_map_dim * self.feature_map_dim),
-            nn.ReLU(),
+            #nn.Linear(latent_dim, 128),
+            #nn.ReLU(),
+            nn.Linear(latent_dim, 256 * self.feature_map_dim * self.feature_map_dim),
+            nn.ReLU(), 
         )
 
         # todo calculate outer padding based on desired output size
@@ -140,14 +140,14 @@ class VAE(nn.Module):
         return recon_x, mu, logvar
 
     def reparameterize(self, mu, logvar):
-        # std = torch.exp(0.5 * logvar)
+        std = torch.exp(0.5 * logvar)
         # sample from a normal distribution with mean 0 and variance 1
-        # eps = torch.randn_like(std)
+        eps = torch.randn_like(std)
 
         # offset mu by small value within standard deviation
-        # return mu + eps * std
+        return mu + eps * std
         # todo re-enable random picks eventually
-        return mu
+        #return mu
 
 
 def vae_loss(recon_x, x, mu, logvar):
