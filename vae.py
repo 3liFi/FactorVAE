@@ -150,11 +150,11 @@ class VAE(nn.Module):
         #return mu
 
 
-def vae_loss(recon_x, x, mu, logvar):
+def vae_loss(recon_x, x, mu, logvar, beta=0.001):
     # print("loss 1: ", x.max)
     recon_loss = f.binary_cross_entropy(recon_x, x, reduction='sum')
     kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    loss = recon_loss + kld
+    loss = recon_loss + beta * kld
 
     # print("loss 2: ", loss)
     return loss
