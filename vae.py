@@ -94,11 +94,18 @@ class Decoder(nn.Module):
             nn.ConvTranspose2d(
                 256, 128, params.kernel_size, stride=params.stride, padding=params.padding,
                 output_padding=calc_outer_padding_based_on_desired_output_dims(
+                    feature_map_dim, feature_map_dim + (first_conv_trans_2d_layer_dim - feature_map_dim) / 2, params.kernel_size, params.stride, params.padding
+                )
+            ),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.ConvTranspose2d(
+                128, 64, params.kernel_size, stride=params.stride, padding=params.padding,
+                output_padding=calc_outer_padding_based_on_desired_output_dims(
                     feature_map_dim, first_conv_trans_2d_layer_dim, params.kernel_size, params.stride, params.padding
                 )
             ),
-            nn.ReLU(),
-            nn.ConvTranspose2d(128, 1, params.kernel_size, stride=params.stride, padding=params.padding,
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.ConvTranspose2d(64, 1, params.kernel_size, stride=params.stride, padding=params.padding,
                                output_padding=calc_outer_padding_based_on_desired_output_dims(
                                    first_conv_trans_2d_layer_dim, SOURCE_IMAGE_DIM, params.kernel_size, params.stride,
                                    params.padding
