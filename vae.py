@@ -103,7 +103,7 @@ class Decoder(nn.Module):
                                    first_conv_trans_2d_layer_dim, SOURCE_IMAGE_DIM, params.kernel_size, params.stride,
                                    params.padding
                                )),  # -> 28x28
-            nn.Sigmoid()
+            #nn.Sigmoid()
         )
 
     def forward(self, z):
@@ -150,10 +150,17 @@ class VAE(nn.Module):
         #return mu
 
 
-def vae_loss(recon_x, x, mu, logvar, beta=0.001):
+def vae_loss(recon_x, x, mu, logvar, current_epoch):
     # print("loss 1: ", x.max)
-    recon_loss = f.binary_cross_entropy(recon_x, x, reduction='sum')
+    # recon_loss = f.binary_cross_entropy(recon_x, x, reduction='sum')
+    recon_loss = f.binary_cross_entropy_with_logits(recon_x, x, reduction='sum')
     kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    # for 30 epochs, this goes from 0.002 to 0.06
+    #beta = min(1, (current_epoch - 10) / 400)
+    #if current_epoch <= 10:
+    #  beta = 0.001
+    beta = 0.001
     loss = recon_loss + beta * kld
 
     # print("loss 2: ", loss)
