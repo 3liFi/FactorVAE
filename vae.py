@@ -91,10 +91,11 @@ class Decoder(nn.Module):
         # todo calculate outer padding based on desired output size
         # 'undo' convolution from encoder
         self.deconv = nn.Sequential(
+            # this layer should keep feature_map_dim resolution, so stride needs to be adjusted
             nn.ConvTranspose2d(
-                256, 128, params.kernel_size, stride=params.stride, padding=params.padding,
+                256, 128, params.kernel_size, stride=1, padding=params.padding,
                 output_padding=calc_outer_padding_based_on_desired_output_dims(
-                    feature_map_dim, feature_map_dim + (first_conv_trans_2d_layer_dim - feature_map_dim) / 2, params.kernel_size, params.stride, params.padding
+                    feature_map_dim, feature_map_dim, params.kernel_size, 1, params.padding
                 )
             ),
             nn.LeakyReLU(0.2, inplace=True),
