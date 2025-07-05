@@ -41,23 +41,23 @@ class Encoder(nn.Module):
 
         self.conv = nn.Sequential(
             nn.Conv2d(1, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(128, 256, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.fc_mu = nn.Sequential(
             nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(128, 64),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(64, latent_dim),
         )
         self.fc_logvar = nn.Sequential(
             nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(128, 64),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(64, latent_dim),
         )
 
@@ -82,10 +82,12 @@ class Decoder(nn.Module):
 
         # latent space -> feature map
         self.fc = nn.Sequential(
-            nn.Linear(latent_dim, 128),
-            nn.ReLU(),
+            nn.Linear(latent_dim, 64),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(64, 128),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(128, 256 * self.feature_map_dim * self.feature_map_dim),
-            nn.ReLU(), 
+            nn.LeakyReLU(0.2, inplace=True), 
         )
 
         # todo calculate outer padding based on desired output size
