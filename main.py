@@ -6,13 +6,13 @@ from sample import sample_images, replicate_images, sample_latent_changes
 import argparse
 from vae import HyperParams
 
-data_flag = 'pathmnist'
+data_flag = 'chestmnist'
 download = True
 info = INFO[data_flag]
 DataClass = getattr(__import__('medmnist'), info['python_class'])
 
 transform = transforms.Compose([
-    #transforms.Grayscale(num_output_channels=1),
+    transforms.Grayscale(num_output_channels=1),
     transforms.CenterCrop((28,28)),
     transforms.ToTensor()
 ])

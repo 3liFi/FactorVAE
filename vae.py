@@ -7,7 +7,7 @@ import math
 
 # FEATURE_MAP_H = 7
 # FEATURE_MAP_W = 7
-LATENT_DIM = 32
+LATENT_DIM = 16
 SOURCE_IMAGE_DIM = 28
 
 
@@ -40,7 +40,7 @@ class Encoder(nn.Module):
         self.params = params
 
         self.conv = nn.Sequential(
-            nn.Conv2d(3, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
+            nn.Conv2d(1, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
             #nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=False),
             nn.Conv2d(128, 256, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
@@ -144,7 +144,7 @@ class Decoder(nn.Module):
             ),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=False),
-            nn.ConvTranspose2d(128, 3, params.kernel_size, stride=params.stride, padding=params.padding,
+            nn.ConvTranspose2d(128, 1, params.kernel_size, stride=params.stride, padding=params.padding,
                                output_padding=calc_outer_padding_based_on_desired_output_dims(
                                    first_conv_trans_2d_layer_dim, SOURCE_IMAGE_DIM, params.kernel_size, params.stride,
                                    params.padding
@@ -171,7 +171,7 @@ class DiscriminatorModel(nn.Module):
             nn.LeakyReLU(0.2, inplace=False),
             nn.Linear(1000, 1000),
             nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(1000, 2),
+            nn.Linear(1000, 1),
         )
 
     def forward(self, z):

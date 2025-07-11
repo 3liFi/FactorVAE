@@ -32,16 +32,16 @@ class VAELightning(pl.LightningModule):
         with torch.no_grad():
             z_detached = z.detach()
 
-        z_perm = z_detached[torch.randperm(z_detached.size(0))]
+        z_perm = permute_dims(z_detached)
 
         real_logits = self.discriminator(z_detached)
         fake_logits = self.discriminator(z_perm)
 
-        real_labels = torch.ones(z.size(0), dtype=torch.long, device=self.device)
-        fake_labels = torch.zeros(z.size(0), dtype=torch.long, device=self.device)
+        real_labels = torch.ones((z.size(0), 1), dtype=torch.float32, device=self.device)
+        fake_labels = torch.zeros((z.size(0), 1), dtype=torch.float32, device=self.device)
 
-        d_loss_real = f.cross_entropy(real_logits, real_labels)
-        d_loss_fake = f.cross_entropy(fake_logits, fake_labels)
+        d_loss_real = f.binary_cross_entropy_with_logits(real_logits, real_labels)
+        d_loss_fake = f.binary_cross_entropy_with_logits(fake_logits, fake_labels)
         d_loss = d_loss_real + d_loss_fake
 
         opt_disc.zero_grad()
@@ -51,9 +51,9 @@ class VAELightning(pl.LightningModule):
         self.log("disc_train_loss", d_loss, prog_bar=True)
 
         # train VAE
-        logits = self.discriminator(z)
-        log_qz = logits[:, 0] - logits[:, 1]
-        total_correlation = log_qz.mean()
+        D_z = torch.sigmoid(self.discriminator(z))
+        tc_estimate = torch.log(D_z + 1e-6) - torch.log(1 - D_z + 1e-6)
+        total_correlation = tc_estimate.mean()
 
         vae_loss = vae_loss_fc(recon, x, mu, logvar, total_correlation, self.current_epoch)
 
@@ -102,6 +102,17 @@ class VAELightning(pl.LightningModule):
         opt_disc = torch.optim.Adam(self.discriminator.parameters(), lr=1e-3)
 
         return [opt_vae, opt_disc]
+
+
+
+def permute_dims(z):
+    B, D = z.size()
+    z_perm = []
+    for d in range(D):
+        z_d = z[:, d]
+        perm = torch.randperm(B)
+        z_perm.append(z_d[perm])
+    return torch.stack(z_perm, dim=1)
 
 def get_model_similarity_score(dataset, vae_lightning: VAELightning) -> int:
     val_loader = DataLoader(dataset, batch_size=10, shuffle=False)
