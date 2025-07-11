@@ -21,7 +21,7 @@ class VAELightning(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, _ = batch
         recon, mu, logvar = self.model(x)
-        loss = vae_loss(recon, x, mu, logvar)
+        loss = vae_loss(recon, x, mu, logvar, self.current_epoch)
         self.log("train_loss", loss)
         return loss
 
@@ -95,13 +95,13 @@ def train_model(transform, params: HyperParams):
     train_dataset = PathMNIST(split='train', download=True, transform=transform)
     val_dataset = PathMNIST(split='val', download=True, transform=transform)
 
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=5, persistent_workers=True)
-    val_loader = DataLoader(val_dataset, batch_size=64)
+    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True, num_workers=2, persistent_workers=True)
+    val_loader = DataLoader(val_dataset, batch_size=256)
 
     vae_module = VAELightning(LATENT_DIM, params)
 
     trainer = pl.Trainer(
-        max_epochs=20,
+        max_epochs=50,
         accelerator='gpu' if torch.cuda.is_available() else 'cpu'
         #accelerator='cpu'
     )
