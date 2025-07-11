@@ -12,7 +12,7 @@ info = INFO[data_flag]
 DataClass = getattr(__import__('medmnist'), info['python_class'])
 
 transform = transforms.Compose([
-    transforms.Grayscale(num_output_channels=1),
+    #transforms.Grayscale(num_output_channels=1),
     transforms.CenterCrop((28,28)),
     transforms.ToTensor()
 ])
