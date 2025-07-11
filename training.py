@@ -68,9 +68,11 @@ def objective(trial):
     train_dataset = PathMNIST(split='train', download=True, transform=transform)
     val_dataset = PathMNIST(split='val', download=True, transform=transform)
 
-    kernel_size = trial.suggest_categorical("kernel_size", [3, 5, 7])
+    # Hyperparameters to optimize
+    kernel_size = trial.suggest_int("kernel_size", 3, 7, 2)
     stride = trial.suggest_int("stride", 1, 2)
-    padding = trial.suggest_categorical("padding", [0, kernel_size // 2])
+    padding = trial.suggest_int("padding", 0, 4, 2)
+    LATENT_DIM = trial.suggest_int("latent_dim", 10, 100, 10)
     epochs = trial.suggest_int("epochs", 5, 35, 5)
 
     trainer = pl.Trainer(
@@ -95,7 +97,7 @@ def train_model(transform, params: HyperParams):
     train_dataset = PathMNIST(split='train', download=True, transform=transform)
     val_dataset = PathMNIST(split='val', download=True, transform=transform)
 
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=5, persistent_workers=True)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=1, persistent_workers=True)
     val_loader = DataLoader(val_dataset, batch_size=64)
 
     vae_module = VAELightning(LATENT_DIM, params)

@@ -7,14 +7,17 @@ import math
 
 # FEATURE_MAP_H = 7
 # FEATURE_MAP_W = 7
-LATENT_DIM = 30
+LATENT_DIM = 64
 SOURCE_IMAGE_DIM = 28
 
 
 class HyperParams(NamedTuple):
     kernel_size: int = 3
     stride: int = 2
-    padding: int = 1
+    padding: int = 0
+
+# Default hyperparameters for the VAE
+params = HyperParams(kernel_size=3, stride=1, padding=0)
 
 
 """
@@ -31,115 +34,198 @@ def calc_outer_padding_based_on_desired_output_dims(source_dim: int, target_dim:
     curr_out_dim = (source_dim - 1) * stride - 2 * padding + kernel_size  # + outer_padding
     return target_dim - curr_out_dim
 
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
 
 class Encoder(nn.Module):
 
-    def __init__(self, latent_dim, params: HyperParams, feature_map_dim: int):
+    def __init__(self):
         super().__init__()
 
-        self.params = params
+        self.conv1 = nn.Conv2d(3, 32, 5, padding=2, stride=2)
+        self.bn1 = nn.BatchNorm2d(32, momentum=0.9)
+        self.conv2 = nn.Conv2d(32, 64, 5, padding=2, stride=2)
+        self.bn2 = nn.BatchNorm2d(64, momentum=0.9)
+        self.conv3 = nn.Conv2d(64, 128, 5, padding=0, stride=1)
+        self.bn3 = nn.BatchNorm2d(128, momentum=0.9)
+        self.conv4 = nn.Conv2d(128, 256, 5, padding=2, stride=2)
+        self.bn4 = nn.BatchNorm2d(256, momentum=0.9)
+        self.relu = nn.LeakyReLU(0.2)
+        self.fc1 = nn.Linear(256 * 2 * 2, 1024)
+        self.bn5 = nn.BatchNorm1d(1024, momentum=0.9)
+        self.fc_mean = nn.Linear(1024, LATENT_DIM)
+        self.fc_logvar = nn.Linear(1024, LATENT_DIM)
 
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
-            nn.ReLU(),
-            nn.Conv2d(128, 256, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
-            nn.ReLU(),
-        )
+        # self.params = params
 
-        self.fc_mu = nn.Sequential(
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, latent_dim),
-        )
-        self.fc_logvar = nn.Sequential(
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, latent_dim),
-        )
+        # self.conv = nn.Sequential(
+        #     nn.Conv2d(1, 64, params.kernel_size, params.stride),
+        #     nn.ReLU(),
+        #     nn.Conv2d(64, 128, params.kernel_size, params.stride),
+        #     nn.ReLU(),
+        #     nn.Conv2d(128, 128, params.kernel_size, params.stride),
+        #     nn.ReLU(),
+        #     nn.Conv2d(128, 256, params.kernel_size, params.stride),
+        #     nn.ReLU(),
+        # )
+        #
+        # self.fc_mu = nn.Sequential(
+        #     nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 64),
+        #     nn.ReLU(),
+        #     nn.Linear(64, latent_dim),
+        # )
+        # self.fc_logvar = nn.Sequential(
+        #     nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 64),
+        #     nn.ReLU(),
+        #     nn.Linear(64, latent_dim),
+        # )
+
+        # self.conv = nn.Sequential(
+        #     nn.Conv2d(1, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
+        #     nn.ReLU(),
+        #     nn.Conv2d(128, 256, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
+        #     nn.ReLU(),
+        # )
+        #
+        # self.fc_mu = nn.Sequential(
+        #     nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 64),
+        #     nn.ReLU(),
+        #     nn.Linear(64, latent_dim),
+        # )
+        # self.fc_logvar = nn.Sequential(
+        #     nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 64),
+        #     nn.ReLU(),
+        #     nn.Linear(64, latent_dim),
+        # )
+
+
+
 
     def forward(self, x):
-        # extract feature maps
-        x = self.conv(x)
+        batch_size = x.size()[0]
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn2(self.conv2(out)))
+        out = self.relu(self.bn3(self.conv3(out)))
+        out = self.relu(self.bn4(self.conv4(out)))
+        out = out.view(batch_size, -1)
+        out = self.relu(self.bn5(self.fc1(out)))
+        mean = self.fc_mean(out)
+        logvar = self.fc_logvar(out)
+        return mean, logvar
 
-        # flatten feature maps from (batch_size, feature_map_amount, feature_map_h, feature_map_w) to (batch_size, rest)
-        x = x.view(x.size(0), -1)
-
-        # calculate mu and standard deviation
-        return self.fc_mu(x), self.fc_logvar(x)
+        # # extract feature maps
+        # x = self.conv(x)
+        #
+        # # flatten feature maps from (batch_size, feature_map_amount, feature_map_h, feature_map_w) to (batch_size, rest)
+        # x = x.view(x.size(0), -1)
+        #
+        # # calculate mu and standard deviation
+        # return self.fc_mu(x), self.fc_logvar(x)
 
 
 class Decoder(nn.Module):
 
-    def __init__(self, latent_dim, params: HyperParams, feature_map_dim: int, first_conv_trans_2d_layer_dim: int):
+    def __init__(self):
         super().__init__()
 
-        self.params = params
-        self.feature_map_dim = feature_map_dim
+        self.fc1 = nn.Linear(LATENT_DIM, 2 * 2 * 256)
+        self.bn1 = nn.BatchNorm1d(2 * 2 * 256, momentum=0.9)
+        self.relu = nn.LeakyReLU(0.2)
+        self.deconv1 = nn.ConvTranspose2d(256, 128, 5, padding=2, stride=2)
+        self.bn2 = nn.BatchNorm2d(128, momentum=0.9)
+        self.deconv2 = nn.ConvTranspose2d(128, 64, 5, padding=0, stride=1)
+        self.bn3 = nn.BatchNorm2d(64, momentum=0.9)
+        self.deconv3 = nn.ConvTranspose2d(64, 32, 5, padding=2, stride=2)
+        self.bn4 = nn.BatchNorm2d(32, momentum=0.9)
+        self.deconv4 = nn.ConvTranspose2d(32, 3, 5, padding=2, stride=2)
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
 
-        # latent space -> feature map
-        self.fc = nn.Sequential(
-            nn.Linear(latent_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 256 * self.feature_map_dim * self.feature_map_dim),
-            nn.ReLU(),
-        )
-
-        # todo calculate outer padding based on desired output size
-        # 'undo' convolution from encoder
-        self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(
-                256, 128, params.kernel_size, stride=params.stride, padding=params.padding,
-                output_padding=calc_outer_padding_based_on_desired_output_dims(
-                    feature_map_dim, first_conv_trans_2d_layer_dim, params.kernel_size, params.stride, params.padding
-                )
-            ),
-            nn.ReLU(),
-            nn.ConvTranspose2d(128, 1, params.kernel_size, stride=params.stride, padding=params.padding,
-                               output_padding=calc_outer_padding_based_on_desired_output_dims(
-                                   first_conv_trans_2d_layer_dim, SOURCE_IMAGE_DIM, params.kernel_size, params.stride,
-                                   params.padding
-                               )),  # -> 28x28
-            nn.Sigmoid()
-        )
-
-    def forward(self, z):
+    def forward(self, x):
+        batch_size = x.size()[0]
+        x = self.relu(self.bn1(self.fc1(x)))
+        x = x.view(-1, 256, 2, 2)
+        x = self.relu(self.bn2(self.deconv1(x)))
+        x = self.relu(self.bn3(self.deconv2(x)))
+        x = self.relu(self.bn4(self.deconv3(x)))
+        x = self.sigmoid(self.deconv4(x))
+        # print(f"Decoder output shape: {x.shape}")
+        return x
         # convert to feature map
-        x = self.fc(z)
-        # unflatten data
-        x = x.view(-1, 256, self.feature_map_dim, self.feature_map_dim)
+        # x = self.fc(z)
+        # # unflatten data
+        # x = x.view(x.size(0), 256, self.feature_map_dim, self.feature_map_dim)
+        #
+        # # feature map -> image
+        # return self.deconv(x)
 
-        # feature map -> image
-        return self.deconv(x)
 
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class VAE(nn.Module):
 
     def __init__(self, latent_dim, params: HyperParams):
         super().__init__()
 
-        first_conv_trans_2d_layer_dim = calc_fmap_size(
-            SOURCE_IMAGE_DIM, params.kernel_size, params.stride, params.padding)
+        # first_conv_trans_2d_layer_dim = calc_fmap_size(
+        #     SOURCE_IMAGE_DIM, params.kernel_size, params.stride, params.padding)
 
         # apply function twice for actual feature map dim because we have two Conv2d layers
-        feature_map_dim = calc_fmap_size(
-            first_conv_trans_2d_layer_dim, params.kernel_size, params.stride, params.padding
-        )
+        # H_init = 28
+        # W_init = 28
+        # number_of_convs = 4  # 4 Conv2d layers in Encoder
+        # for _ in range(number_of_convs):
+        #     H_init = calc_fmap_size(H_init, params.kernel_size, params.stride, params.padding)
+        #     W_init = calc_fmap_size(W_init, params.kernel_size, params.stride, params.padding)
+        # feature_map_dim = H_init
+        # feature_map_dim = calc_fmap_size(
+        #     first_conv_trans_2d_layer_dim, params.kernel_size, params.stride, params.padding
+        # )
 
-        self.encoder = Encoder(latent_dim, params, feature_map_dim)
-        self.decoder = Decoder(latent_dim, params, feature_map_dim, first_conv_trans_2d_layer_dim)
+        self.encoder = Encoder()
+        self.decoder = Decoder()
+        self.encoder.apply(weights_init)
+        self.decoder.apply(weights_init)
 
     def forward(self, x):
-        mu, logvar = self.encoder(x)
-        z = self.reparameterize(mu, logvar)
+        bs = x.size()[0]
+        z_mean, z_logvar = self.encoder(x)
+        std = z_logvar.mul(0.5).exp_()
 
-        recon_x = self.decoder(z)
-        return recon_x, mu, logvar
+        # sampling epsilon from normal distribution
+        epsilon = torch.randn(bs, LATENT_DIM).to(device)
+        z = z_mean + std * epsilon
+        x_tilda = self.decoder(z)
+
+        return x_tilda, z_mean, z_logvar
+
+        # mu, logvar = self.encoder(x)
+        # z = self.reparameterize(mu, logvar)
+        #
+        # recon_x = self.decoder(z)
+        # return recon_x, mu, logvar
 
     def reparameterize(self, mu, logvar):
+
+
+
+
         # std = torch.exp(0.5 * logvar)
         # sample from a normal distribution with mean 0 and variance 1
         # eps = torch.randn_like(std)
@@ -154,7 +240,7 @@ def vae_loss(recon_x, x, mu, logvar):
     # print("loss 1: ", x.max)
     recon_loss = f.binary_cross_entropy(recon_x, x, reduction='sum')
     kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    loss = recon_loss + kld
+    loss = recon_loss + kld * 0.001
 
     # print("loss 2: ", loss)
     return loss
