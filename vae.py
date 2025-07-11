@@ -7,7 +7,7 @@ import math
 
 # FEATURE_MAP_H = 7
 # FEATURE_MAP_W = 7
-LATENT_DIM = 64
+LATENT_DIM = 256
 SOURCE_IMAGE_DIM = 28
 
 
@@ -47,16 +47,16 @@ class Encoder(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(3, 32, 5, padding=2, stride=2)
+        self.conv1 = nn.Conv2d(3, 32, 5, padding=0, stride=1)       # 24 x 24
         self.bn1 = nn.BatchNorm2d(32, momentum=0.9)
-        self.conv2 = nn.Conv2d(32, 64, 5, padding=2, stride=2)
+        self.conv2 = nn.Conv2d(32, 64, 5, padding=0, stride=1)      # 20 x 20
         self.bn2 = nn.BatchNorm2d(64, momentum=0.9)
-        self.conv3 = nn.Conv2d(64, 128, 5, padding=0, stride=1)
+        self.conv3 = nn.Conv2d(64, 128, 5, padding=0, stride=1)     # 16 x 16
         self.bn3 = nn.BatchNorm2d(128, momentum=0.9)
-        self.conv4 = nn.Conv2d(128, 256, 5, padding=2, stride=2)
+        self.conv4 = nn.Conv2d(128, 256, 5, padding=2, stride=2)    # 8 x 8
         self.bn4 = nn.BatchNorm2d(256, momentum=0.9)
         self.relu = nn.LeakyReLU(0.2)
-        self.fc1 = nn.Linear(256 * 2 * 2, 1024)
+        self.fc1 = nn.Linear(256 * 8 * 8, 1024)
         self.bn5 = nn.BatchNorm1d(1024, momentum=0.9)
         self.fc_mean = nn.Linear(1024, LATENT_DIM)
         self.fc_logvar = nn.Linear(1024, LATENT_DIM)
@@ -145,23 +145,23 @@ class Decoder(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.fc1 = nn.Linear(LATENT_DIM, 2 * 2 * 256)
-        self.bn1 = nn.BatchNorm1d(2 * 2 * 256, momentum=0.9)
+        self.fc1 = nn.Linear(LATENT_DIM, 8 * 8 * 256)
+        self.bn1 = nn.BatchNorm1d(8 * 8 * 256, momentum=0.9)
         self.relu = nn.LeakyReLU(0.2)
-        self.deconv1 = nn.ConvTranspose2d(256, 128, 5, padding=2, stride=2)
+        self.deconv1 = nn.ConvTranspose2d(256, 128, 6, padding=2, stride=2) # 16 x 16
         self.bn2 = nn.BatchNorm2d(128, momentum=0.9)
-        self.deconv2 = nn.ConvTranspose2d(128, 64, 5, padding=0, stride=1)
+        self.deconv2 = nn.ConvTranspose2d(128, 64, 5, padding=0, stride=1)  # 20 x 20
         self.bn3 = nn.BatchNorm2d(64, momentum=0.9)
-        self.deconv3 = nn.ConvTranspose2d(64, 32, 5, padding=2, stride=2)
+        self.deconv3 = nn.ConvTranspose2d(64, 32, 5, padding=0, stride=1)   # 24 x 24
         self.bn4 = nn.BatchNorm2d(32, momentum=0.9)
-        self.deconv4 = nn.ConvTranspose2d(32, 3, 5, padding=2, stride=2)
+        self.deconv4 = nn.ConvTranspose2d(32, 3, 5, padding=0, stride=1)    # 28 x 28
         self.tanh = nn.Tanh()
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         batch_size = x.size()[0]
         x = self.relu(self.bn1(self.fc1(x)))
-        x = x.view(-1, 256, 2, 2)
+        x = x.view(-1, 256, 8, 8)
         x = self.relu(self.bn2(self.deconv1(x)))
         x = self.relu(self.bn3(self.deconv2(x)))
         x = self.relu(self.bn4(self.deconv3(x)))
@@ -240,7 +240,7 @@ def vae_loss(recon_x, x, mu, logvar):
     # print("loss 1: ", x.max)
     recon_loss = f.binary_cross_entropy(recon_x, x, reduction='sum')
     kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-    loss = recon_loss + kld * 0.001
+    loss = recon_loss + kld * 0.0001
 
     # print("loss 2: ", loss)
     return loss

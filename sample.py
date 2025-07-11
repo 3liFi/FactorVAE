@@ -21,6 +21,8 @@ def load_model(path="vae_model.ckpt"):
     model = VAELightning.load_from_checkpoint(path, latent_dim=LATENT_DIM)
     return model
 
+default_model_path = "checkpoints_256/vae-epoch=94-train_loss=14840.05.ckpt"
+
 # sample.py
 import torch
 from vae import VAE
@@ -28,7 +30,7 @@ from training import VAELightning
 import matplotlib.pyplot as plt
 import torchvision
 
-def sample_images(model_path="vae_model.ckpt", n=64):
+def sample_images(model_path=default_model_path, n=64):
     trainer = VAELightning(LATENT_DIM, params)
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
@@ -56,7 +58,7 @@ def sample_images(model_path="vae_model.ckpt", n=64):
     plt.axis('off')
     plt.show()
 
-def replicate_images(dataset, model_path="vae_model.ckpt"):
+def replicate_images(dataset, model_path=default_model_path):
     trainer = VAELightning(LATENT_DIM, params)
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()

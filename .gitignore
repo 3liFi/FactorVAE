@@ -2,3 +2,7 @@
 vae_model.ckpt
 .idea
 __pychar__
+checkpoints_160
+checkpoints_256
+vae_output
+__pycache__

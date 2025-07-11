@@ -103,7 +103,14 @@ def train_model(transform, params: HyperParams):
     vae_module = VAELightning(LATENT_DIM, params)
 
     trainer = pl.Trainer(
-        max_epochs=20,
+        max_epochs=100,
+        # save
+        callbacks=[pl.callbacks.ModelCheckpoint(
+            dirpath='checkpoints_256',
+            filename='vae-{epoch:02d}-{train_loss:.2f}',
+            save_top_k=-1,
+            every_n_epochs=5
+        )],
         accelerator='gpu' if torch.cuda.is_available() else 'cpu'
         #accelerator='cpu'
     )
