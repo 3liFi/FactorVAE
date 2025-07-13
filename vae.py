@@ -2,6 +2,7 @@ from typing import NamedTuple
 
 import torch.nn as nn
 import torch.nn.functional as f
+import torch.nn.init as init
 import torch
 import math
 
@@ -32,134 +33,72 @@ def calc_outer_padding_based_on_desired_output_dims(source_dim: int, target_dim:
     return target_dim - curr_out_dim
 
 
+
 class Encoder(nn.Module):
 
-    def __init__(self, latent_dim, params: HyperParams, feature_map_dim: int):
+    def __init__(self):
         super().__init__()
 
-        self.params = params
-
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
-            #nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Conv2d(128, 256, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
-            #nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=False),
-            #nn.Conv2d(256, 512, params.kernel_size, 1, params.padding, padding_mode='replicate'),
-            #nn.BatchNorm2d(512),
-            #nn.LeakyReLU(0.2, inplace=False),
-        )
-
-        self.fc_mu = nn.Sequential(
-            #nn.Linear(512 * feature_map_dim * feature_map_dim, 256),
-            #nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(128, 64),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(64, latent_dim),
-        )
-        self.fc_logvar = nn.Sequential(
-            #nn.Linear(512 * feature_map_dim * feature_map_dim, 256),
-            #nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(128, 64),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(64, latent_dim),
-            nn.Tanh(),
-        )
+        self.conv1 = nn.Conv2d(1, 32, 5, padding=0, stride=1)       # 24 x 24
+        self.bn1 = nn.BatchNorm2d(32, momentum=0.9)
+        self.conv2 = nn.Conv2d(32, 32, 5, padding=0, stride=1)      # 20 x 20
+        self.bn2 = nn.BatchNorm2d(32, momentum=0.9)
+        self.conv3 = nn.Conv2d(32, 64, 5, padding=0, stride=1)     # 16 x 16
+        self.bn3 = nn.BatchNorm2d(64, momentum=0.9)
+        self.conv4 = nn.Conv2d(64, 64, 5, padding=2, stride=2)    # 8 x 8
+        self.bn4 = nn.BatchNorm2d(64, momentum=0.9)
+        self.conv5 = nn.Conv2d(64, 256, 5, padding=2, stride=2)  # 4 x 4
+        self.bn5 = nn.BatchNorm2d(256, momentum=0.9)
+        self.relu = nn.LeakyReLU(0.2)
+        self.fc1 = nn.Linear(256 * 4 * 4, 512)
+        self.bn6 = nn.BatchNorm1d(512, momentum=0.9)
+        self.fc_mean = nn.Linear(512, LATENT_DIM)
+        self.fc_logvar = nn.Linear(512, LATENT_DIM)
 
     def forward(self, x):
-        # extract feature maps
-        x = self.conv(x)
-
-        # flatten feature maps from (batch_size, feature_map_amount, feature_map_h, feature_map_w) to (batch_size, rest)
-        x = x.view(x.size(0), -1)
-
-        # calculate mu and standard deviation
-        return self.fc_mu(x), self.fc_logvar(x) * 4
+        batch_size = x.size()[0]
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn2(self.conv2(out)))
+        out = self.relu(self.bn3(self.conv3(out)))
+        out = self.relu(self.bn4(self.conv4(out)))
+        out = self.relu(self.bn5(self.conv5(out)))
+        out = out.view(batch_size, -1)
+        out = self.relu(self.bn6(self.fc1(out)))
+        mean = self.fc_mean(out)
+        logvar = self.fc_logvar(out)
+        return mean, logvar
 
 
 class Decoder(nn.Module):
 
-    def __init__(self, latent_dim, params: HyperParams, feature_map_dim: int, first_conv_trans_2d_layer_dim: int):
+    def __init__(self):
         super().__init__()
+        self.fc1 = nn.Linear(LATENT_DIM, 4 * 4 * 256)
+        self.bn0 = nn.BatchNorm1d(4 * 4 * 256, momentum=0.9)
+        self.relu = nn.LeakyReLU(0.2)
+        self.deconv0 = nn.ConvTranspose2d(256, 64, 6, padding=2, stride=2)  # 8 x 8
+        self.bn1 = nn.BatchNorm2d(64, momentum=0.9)
+        self.deconv1 = nn.ConvTranspose2d(64, 64, 6, padding=2, stride=2) # 16 x 16
+        self.bn2 = nn.BatchNorm2d(64, momentum=0.9)
+        self.deconv2 = nn.ConvTranspose2d(64, 32, 5, padding=0, stride=1)  # 20 x 20
+        self.bn3 = nn.BatchNorm2d(32, momentum=0.9)
+        self.deconv3 = nn.ConvTranspose2d(32, 32, 5, padding=0, stride=1)   # 24 x 24
+        self.bn4 = nn.BatchNorm2d(32, momentum=0.9)
+        self.deconv4 = nn.ConvTranspose2d(32, 1, 5, padding=0, stride=1)    # 28 x 28
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
 
-        self.params = params
-        self.feature_map_dim = feature_map_dim
-
-        # latent space -> feature map
-        self.fc = nn.Sequential(
-            #nn.Linear(latent_dim, 64),
-            #nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(latent_dim, 128),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(128, 256),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(256, 512),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(512, 1024 * self.feature_map_dim * self.feature_map_dim),
-            nn.LeakyReLU(0.2, inplace=False),
-            #nn.Linear(1024, 2048 * self.feature_map_dim * self.feature_map_dim),
-            #nn.LeakyReLU(0.2, inplace=False),
-        )
-
-        # todo calculate outer padding based on desired output size
-        # 'undo' convolution from encoder
-        self.deconv = nn.Sequential(
-            # this layer should keep feature_map_dim resolution, so stride needs to be adjusted
-            #nn.ConvTranspose2d(
-            #    2048, 1024, params.kernel_size, stride=1, padding=params.padding,
-            #    output_padding=calc_outer_padding_based_on_desired_output_dims(
-            #        feature_map_dim, feature_map_dim, params.kernel_size, 1, params.padding
-            #    )
-            #),
-            #nn.BatchNorm2d(1024),
-            #nn.LeakyReLU(0.2, inplace=False),
-            # this layer should keep feature_map_dim resolution, so stride needs to be adjusted
-            nn.ConvTranspose2d(
-                1024, 512, params.kernel_size, stride=1, padding=params.padding,
-                output_padding=calc_outer_padding_based_on_desired_output_dims(
-                    feature_map_dim, feature_map_dim, params.kernel_size, 1, params.padding
-                )
-            ),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=False),
-            # this layer should keep feature_map_dim resolution, so stride needs to be adjusted
-            nn.ConvTranspose2d(
-                512, 256, params.kernel_size, stride=1, padding=params.padding,
-                output_padding=calc_outer_padding_based_on_desired_output_dims(
-                    feature_map_dim, feature_map_dim, params.kernel_size, 1, params.padding
-                )
-            ),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.ConvTranspose2d(
-                256, 128, params.kernel_size, stride=params.stride, padding=params.padding,
-                output_padding=calc_outer_padding_based_on_desired_output_dims(
-                    feature_map_dim, first_conv_trans_2d_layer_dim, params.kernel_size, params.stride, params.padding
-                )
-            ),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.ConvTranspose2d(128, 1, params.kernel_size, stride=params.stride, padding=params.padding,
-                               output_padding=calc_outer_padding_based_on_desired_output_dims(
-                                   first_conv_trans_2d_layer_dim, SOURCE_IMAGE_DIM, params.kernel_size, params.stride,
-                                   params.padding
-                               )),  # -> 28x28
-            nn.Sigmoid()
-        )
-
-    def forward(self, z):
-        # convert to feature map
-        x = self.fc(z)
-        # unflatten data
-        x = x.view(-1, 1024, self.feature_map_dim, self.feature_map_dim)
-
-        # feature map -> image
-        return self.deconv(x)
+    def forward(self, x):
+        batch_size = x.size()[0]
+        x = self.relu(self.bn0(self.fc1(x)))
+        x = x.view(-1, 256, 4, 4)
+        x = self.relu(self.bn1(self.deconv0(x)))
+        x = self.relu(self.bn2(self.deconv1(x)))
+        x = self.relu(self.bn3(self.deconv2(x)))
+        x = self.relu(self.bn4(self.deconv3(x)))
+        x = self.sigmoid(self.deconv4(x))
+        # print(f"Decoder output shape: {x.shape}")
+        return x
 
 
 class DiscriminatorModel(nn.Module):
@@ -190,8 +129,8 @@ class VAE(nn.Module):
             first_conv_trans_2d_layer_dim, params.kernel_size, params.stride, params.padding
         )
 
-        self.encoder = Encoder(latent_dim, params, feature_map_dim)
-        self.decoder = Decoder(latent_dim, params, feature_map_dim, first_conv_trans_2d_layer_dim)
+        self.encoder = Encoder()
+        self.decoder = Decoder()
 
     def forward(self, x):
         mu, logvar = self.encoder(x)
@@ -227,7 +166,7 @@ def vae_loss(recon_x, x, mu, logvar, total_correlation, current_epoch):
     beta = 0.001
     #beta = min(1.0, current_epoch / 200 * 0.05)
     #loss = recon_loss + beta * kld
-    gamma = 6.4
+    gamma = 10.0
     loss = recon_loss + kld * beta + gamma * total_correlation
     # print("loss 2: ", loss)
     return loss

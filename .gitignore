@@ -1,0 +1,10 @@
+checkpoints_256_chest
+checkpoints_256
+checkpoints_128_chest
+checkpoints_160
+checkpoints_latent
+lightning_logs
+vae_output
+output.png
+vae_model.ckpt
+.idea

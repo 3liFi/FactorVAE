@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader
-from medmnist import PathMNIST
+from medmnist import ChestMNIST
 from vae import VAE, vae_loss as vae_loss_fc, DiscriminatorModel
 import pytorch_lightning as pl
 import torch
@@ -151,8 +151,8 @@ def objective(trial):
         transforms.ToTensor()
     ])
 
-    train_dataset = PathMNIST(split='train', download=True, transform=transform)
-    val_dataset = PathMNIST(split='val', download=True, transform=transform)
+    train_dataset = ChestMNIST(split='train', download=True, transform=transform)
+    val_dataset = ChestMNIST(split='val', download=True, transform=transform)
 
     kernel_size = trial.suggest_categorical("kernel_size", [3, 5, 7])
     stride = trial.suggest_int("stride", 1, 2)
@@ -178,8 +178,8 @@ def objective(trial):
 
 def train_model(transform, params: HyperParams):
     torch.set_float32_matmul_precision('high')
-    train_dataset = PathMNIST(split='train', download=True, transform=transform)
-    val_dataset = PathMNIST(split='val', download=True, transform=transform)
+    train_dataset = ChestMNIST(split='train', download=True, transform=transform)
+    val_dataset = ChestMNIST(split='val', download=True, transform=transform)
 
     train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True, num_workers=2, persistent_workers=True)
     val_loader = DataLoader(val_dataset, batch_size=256)
@@ -190,7 +190,14 @@ def train_model(transform, params: HyperParams):
     trainer = pl.Trainer(
         max_epochs=75,
        # resume_from_checkpoint="vae_model.ckpt",
-        accelerator='gpu' if torch.cuda.is_available() else 'cpu'
+        accelerator='gpu' if torch.cuda.is_available() else 'cpu',
+        # save
+        callbacks = [pl.callbacks.ModelCheckpoint(
+            dirpath='checkpoints_latent',
+            filename='vae-{epoch:02d}',
+            save_top_k=-1,
+            every_n_epochs=5
+        )]
         #accelerator='cpu'
     )
     trainer.fit(vae_module, train_loader, val_loader)

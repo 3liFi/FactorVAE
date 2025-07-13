@@ -28,7 +28,9 @@ import matplotlib.pyplot as plt
 import torchvision
 from vae import HyperParams
 
-def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", n=64):
+default_path = "checkpoints_latent/vae-epoch=49.ckpt"
+
+def sample_images(model_path=default_path, n=64):
     # we can pass default hyper params object here because it won't be used anyway
     trainer = VAELightning(LATENT_DIM, HyperParams())
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
@@ -43,7 +45,7 @@ def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", n=64):
     plt.axis('off')
     plt.show()
 
-def sample_latent_changes(dataset, model_path="vae_model_best_32_latent_factor.ckpt"):
+def sample_latent_changes(dataset, model_path=default_path):
     # we can pass default hyper params object here because it won't be used anyway
     trainer = VAELightning(LATENT_DIM, HyperParams())
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
@@ -52,7 +54,7 @@ def sample_latent_changes(dataset, model_path="vae_model_best_32_latent_factor.c
     val_loader = DataLoader(dataset, batch_size=1, shuffle=False)
     x_batch, _ = next(iter(val_loader))
 
-    x_batch_repeated = x_batch.repeat(13*32, 1, 1, 1)
+    x_batch_repeated = x_batch.repeat(13*LATENT_DIM, 1, 1, 1)
 
     x_batch = x_batch_repeated.to(trainer.device)
 
@@ -61,7 +63,7 @@ def sample_latent_changes(dataset, model_path="vae_model_best_32_latent_factor.c
     z = mu
 
     latent_vals = [-3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3]
-    for j in range(0, 32):
+    for j in range(0, LATENT_DIM):
         for i in range(0, len(latent_vals)):
             print("changing!")
             z[j * len(latent_vals) + i][j] = latent_vals[i]
@@ -76,7 +78,7 @@ def sample_latent_changes(dataset, model_path="vae_model_best_32_latent_factor.c
     plt.axis('off')
     plt.show()
     plt.savefig("output.png")"""
-    visualize_with_difference_maps(reconstructed, num_latents=32)
+    visualize_with_difference_maps(reconstructed, num_latents=LATENT_DIM)
 
 
 def visualize_with_difference_maps(reconstructed, num_latents=64, steps=13):
@@ -116,7 +118,7 @@ def visualize_with_difference_maps(reconstructed, num_latents=64, steps=13):
     plt.axis("off")
     plt.show()
 
-def replicate_images(dataset, model_path="vae_model_best_32_latent_factor.ckpt"):
+def replicate_images(dataset, model_path=default_path):
     # we can pass default hyper params object here because it won't be used anyway
     trainer = VAELightning(LATENT_DIM, HyperParams())
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
