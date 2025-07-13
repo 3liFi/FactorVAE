@@ -39,20 +39,6 @@ def sample_images(model_path=default_model_path, n=64):
     with torch.no_grad():
         samples = trainer.model.decoder(z)
 
-    # Assuming samples are in the range [0, 1]
-    # samples = (samples + 1) / 2  # Normalize to [0, 1]
-    # samples = samples.clamp(0, 1)  # Ensure values are within [0, 1]
-    # samples = samples.cpu()
-    # samples = samples.view(n, 1, 64, 64)  # Reshape if needed
-    # samples = samples[:64]  # Limit to 64 samples for visualization
-    # samples = samples.permute(0, 2, 3, 1)  # Change to (N, H, W, C) for matplotlib
-    # samples = samples.numpy()  # Convert to numpy for visualization
-    # samples = samples * 255  # Scale to [0, 255] for visualization
-    # samples = samples.astype('uint8')  # Convert to uint8 for image display
-    # samples = samples.reshape(n, 64, 64, 1)  # Reshape if needed
-    # samples = samples.squeeze()  # Remove channel dimension if grayscale
-    # samples = samples[:64]  # Limit to 64 samples for visualization
-
     grid = torchvision.utils.make_grid(samples, nrow=8)
     plt.imshow(grid.permute(1, 2, 0))
     plt.axis('off')
