@@ -7,7 +7,7 @@ import math
 
 # FEATURE_MAP_H = 7
 # FEATURE_MAP_W = 7
-LATENT_DIM = 32
+LATENT_DIM = 8
 SOURCE_IMAGE_DIM = 28
 
 
@@ -40,35 +40,35 @@ class Encoder(nn.Module):
         self.params = params
 
         self.conv = nn.Sequential(
-            nn.Conv2d(3, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
+            nn.Conv2d(1, 128, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
             #nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=False),
             nn.Conv2d(128, 256, params.kernel_size, params.stride, params.padding, padding_mode='replicate'),
             #nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=False),
-            #nn.Conv2d(256, 512, params.kernel_size, 1, params.padding, padding_mode='replicate'),
-            #nn.BatchNorm2d(512),
-            #nn.LeakyReLU(0.2, inplace=False),
+            nn.Conv2d(256, 512, params.kernel_size, 1, params.padding, padding_mode='replicate'),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=False),
         )
 
         self.fc_mu = nn.Sequential(
-            #nn.Linear(512 * feature_map_dim * feature_map_dim, 256),
-            #nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+            nn.Linear(512 * feature_map_dim * feature_map_dim, 256),
+            nn.LeakyReLU(0.2, inplace=False),
+            nn.Linear(256, 128),
             nn.LeakyReLU(0.2, inplace=False),
             nn.Linear(128, 64),
             nn.LeakyReLU(0.2, inplace=False),
             nn.Linear(64, latent_dim),
         )
         self.fc_logvar = nn.Sequential(
-            #nn.Linear(512 * feature_map_dim * feature_map_dim, 256),
-            #nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(256 * feature_map_dim * feature_map_dim, 128),
+            nn.Linear(512 * feature_map_dim * feature_map_dim, 256),
+            nn.LeakyReLU(0.2, inplace=False),
+            nn.Linear(256, 128),
             nn.LeakyReLU(0.2, inplace=False),
             nn.Linear(128, 64),
             nn.LeakyReLU(0.2, inplace=False),
             nn.Linear(64, latent_dim),
-            nn.Tanh(),
+            #nn.Tanh(),
         )
 
     def forward(self, x):
@@ -79,7 +79,7 @@ class Encoder(nn.Module):
         x = x.view(x.size(0), -1)
 
         # calculate mu and standard deviation
-        return self.fc_mu(x), self.fc_logvar(x) * 4
+        return self.fc_mu(x), self.fc_logvar(x)# * 4
 
 
 class Decoder(nn.Module):
@@ -144,7 +144,7 @@ class Decoder(nn.Module):
             ),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=False),
-            nn.ConvTranspose2d(128, 3, params.kernel_size, stride=params.stride, padding=params.padding,
+            nn.ConvTranspose2d(128, 1, params.kernel_size, stride=params.stride, padding=params.padding,
                                output_padding=calc_outer_padding_based_on_desired_output_dims(
                                    first_conv_trans_2d_layer_dim, SOURCE_IMAGE_DIM, params.kernel_size, params.stride,
                                    params.padding
@@ -168,10 +168,14 @@ class DiscriminatorModel(nn.Module):
 
         self.discriminator = nn.Sequential(
             nn.Linear(latent_dim, 1000),
-            nn.LeakyReLU(0.2, inplace=False),
+            nn.BatchNorm1d(1000),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
             nn.Linear(1000, 1000),
-            nn.LeakyReLU(0.2, inplace=False),
-            nn.Linear(1000, 2),
+            nn.BatchNorm1d(1000),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(1000, 2)
         )
 
     def forward(self, z):
@@ -224,10 +228,16 @@ def vae_loss(recon_x, x, mu, logvar, total_correlation, current_epoch):
     #beta = min(1, (current_epoch - 10) / 400)
     #if current_epoch <= 10:
     #  beta = 0.001
-    beta = 0.001
+    #beta = 0.5
+    target_beta = 0.7
+    beta = min(target_beta, max(0.001, (current_epoch / 30) * target_beta))
     #beta = min(1.0, current_epoch / 200 * 0.05)
     #loss = recon_loss + beta * kld
-    gamma = 6.4
+
+    gamma = 0
+
+    #if current_epoch < 5:
+        #gamma = 0.0
     loss = recon_loss + kld * beta + gamma * total_correlation
     # print("loss 2: ", loss)
-    return loss
+    return loss, recon_loss
