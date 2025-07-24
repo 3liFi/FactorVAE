@@ -1,5 +1,6 @@
 from medmnist import INFO
 from torch.utils.data import DataLoader
+from medmnist import ChestMNIST
 from torchvision import transforms
 from training import train_model, optimize_hyper_params_with_optuna
 from sample import sample_images, replicate_images, sample_latent_changes
@@ -26,7 +27,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == 'train':
-        train_model(transform, HyperParams())
+        train_dataset = ChestMNIST(split='train', download=True, transform=transform)
+        train_model(train_dataset, HyperParams())
     elif args.mode == 'random':
         sample_images()
     elif args.mode == 'replicate':
