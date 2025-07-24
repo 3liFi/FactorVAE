@@ -58,9 +58,19 @@ def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", hyper_params
     plt.axis('off')
     plt.show()
 
-def sample_latent_changes(dataset, model_path="vae_model_factor_chest.ckpt"):
-    # we can pass default hyper params object here because it won't be used anyway
-    trainer = VAELightning(LATENT_DIM, HyperParams())
+def sample_latent_changes(dataset, model_path="vae_model_factor_chest.ckpt", hyper_params=HyperParams()):
+    """
+    This function visualizes the latent vector that the given model generates for the first image from the given dataset. For each latent dimension,
+    it displays one row which makes isolated changes to that specific dimension. The value is changed from -3 to +3 in increments of 0.5. In the rightmost column,
+    a difference map visualizes the changes between the steps.
+
+    Args:
+        dataset (torch.utils.data.Dataset): The dataset to use for the visualization
+        model_path (String): The path to the trained model
+        hyper_params (HyperParams): The hyperparameters to use in the VAEs convolution layers. Must match the parameters used when training the model at model_path.
+    """
+
+    trainer = VAELightning(LATENT_DIM, hyper_params)
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
 
@@ -87,6 +97,10 @@ def sample_latent_changes(dataset, model_path="vae_model_factor_chest.ckpt"):
 
 
 def visualize_with_difference_maps(reconstructed, num_latents=64, steps=13):
+    """
+    This function
+    """
+
     images_per_row = steps + 1  # +1 for difference image
     rows = []
 
