@@ -1,8 +1,7 @@
 from medmnist import INFO
-from torch.utils.data import DataLoader
 from medmnist import ChestMNIST
 from torchvision import transforms
-from training import train_model, optimize_hyper_params_with_optuna
+from training import train_model#, optimize_hyper_params_with_optuna
 from sample import sample_images, replicate_images, sample_latent_changes
 import argparse
 from vae import HyperParams
@@ -33,7 +32,7 @@ if __name__ == "__main__":
         sample_images()
     elif args.mode == 'replicate':
         replicate_images(val_dataset)
-    elif args.mode == 'optimize':
-        optimize_hyper_params_with_optuna()
+    #elif args.mode == 'optimize':
+    #    optimize_hyper_params_with_optuna()
     elif args.mode == 'latent':
         sample_latent_changes(val_dataset)

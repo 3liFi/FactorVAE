@@ -1,3 +1,5 @@
+# TODO never used, remove?
+"""
 from torch.utils.data import DataLoader
 
 from vae import vae_loss
@@ -19,25 +21,38 @@ def test_model(model, dataloader):
 def load_model(path="vae_model.ckpt"):
     model = VAELightning.load_from_checkpoint(path, latent_dim=LATENT_DIM)
     return model
+"""
 
-# sample.py
 import torch
-from vae import VAE
 from training import VAELightning
 import matplotlib.pyplot as plt
 import torchvision
-from vae import HyperParams
+from vae import HyperParams, LATENT_DIM
+from torch.utils.data import DataLoader
 
-def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", n=64):
-    # we can pass default hyper params object here because it won't be used anyway
-    trainer = VAELightning(LATENT_DIM, HyperParams())
+def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", hyper_params=HyperParams(), n=64):
+    """
+    This function uses a trained model to to sample n random images from the VAE. To do that, the latent vector is randomized.
+    The images will be displayed in a plot.
+
+    Args:
+        model_path (String): The path to the trained model
+        hyper_params (HyperParams): The hyperparameters to use in the VAEs convolution layers. Must match the parameters used when training the model at model_path.
+        n (int): The number of images to sample
+    """
+
+    # Load model
+    trainer = VAELightning(LATENT_DIM, hyper_params)
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
 
+    # Generate random latent vectors
     z = torch.randn(n, LATENT_DIM)
+    # Feed through Decoder
     with torch.no_grad():
         samples = trainer.model.decoder(z)
 
+    # Show images in plot
     grid = torchvision.utils.make_grid(samples, nrow=8)
     plt.imshow(grid.permute(1, 2, 0))
     plt.axis('off')
@@ -67,15 +82,7 @@ def sample_latent_changes(dataset, model_path="vae_model_factor_chest.ckpt"):
             z[j * len(latent_vals) + i][j] = latent_vals[i]
 
     reconstructed = trainer.vae.decoder(z)
-    """print("mu:", mu.min().item(), mu.max().item())
-    print("logvar:", logvar.min().item(), logvar.max().item())
-    print("Output range:", reconstructed.min().item(), reconstructed.max().item())
 
-    grid = torchvision.utils.make_grid(reconstructed, nrow=13)
-    plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
-    plt.axis('off')
-    plt.show()
-    plt.savefig("output.png")"""
     visualize_with_difference_maps(reconstructed, num_latents=32)
 
 
@@ -116,31 +123,38 @@ def visualize_with_difference_maps(reconstructed, num_latents=64, steps=13):
     plt.axis("off")
     plt.show()
 
-def replicate_images(dataset, model_path="vae_model_factor_chest.ckpt"):
-    # we can pass default hyper params object here because it won't be used anyway
-    trainer = VAELightning(LATENT_DIM, HyperParams())
+def replicate_images(dataset, model_path="vae_model_factor_chest.ckpt", hyper_params=HyperParams()):
+    """
+    This function uses a trained model to replicate the first 10 images of the given dataset. It will display a grid of both the original
+    and the generated images.
+
+    Args:
+        dataset (torch.utils.data.Dataset): Dataset to replicate
+        model_path (String): The path to the trained model
+        hyper_params (HyperParams): The hyperparameters to use in the VAEs convolution layers. Must match the parameters used when training the model at model_path.
+    """
+
+    trainer = VAELightning(LATENT_DIM, hyper_params)
     trainer.load_state_dict(torch.load(model_path)['state_dict'])
     trainer.eval()
 
+    # Load the first 10 images of dataset
     val_loader = DataLoader(dataset, batch_size=10, shuffle=False)
     x_batch, _ = next(iter(val_loader))
-    print("Input shape:", x_batch.shape)  # Should be [B, 3, H, W]
-    print("Input min/max:", x_batch.min().item(), x_batch.max().item())  # Should be in [0, 1]
 
+    # Pass through encoder to receive mu
     x_batch = x_batch.to(trainer.device)
-    mu, logvar = trainer.vae.encoder(x_batch)
+    mu, _ = trainer.vae.encoder(x_batch)
     z = mu
-    print(len(z))
-    print(z[0])
-    reconstructed = trainer.vae.decoder(z)
-    print("mu:", mu.min().item(), mu.max().item())
-    print("logvar:", logvar.min().item(), logvar.max().item())
-    print("Output range:", reconstructed.min().item(), reconstructed.max().item())
 
+    # Use mu directly as latent vector, without reparameterization, to generate the same image again
+    reconstructed = trainer.vae.decoder(z)
+    # Combine originals and generated images in grid
     combined_images = torch.cat([x_batch, reconstructed])
 
+    # Show plot and save to PNG
     grid = torchvision.utils.make_grid(combined_images, nrow=5)
     plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
     plt.axis('off')
-    plt.show()
     plt.savefig("output.png")
+    plt.show()
