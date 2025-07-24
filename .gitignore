@@ -1,0 +1,8 @@
+# Ignore pycache
+__pycache__/
+
+# Ignore IDE/project settings
+.idea/
+
+# Ignore lightling logs
+lightning_logs/
