@@ -8,6 +8,7 @@ import math
 LATENT_DIM = 8
 SOURCE_IMAGE_DIM = 28
 
+
 class HyperParams(NamedTuple):
     """
     A class used to store hyperparameters of the VAE. They will be used across the entire network.
@@ -199,6 +200,7 @@ class DiscriminatorModel(nn.Module):
 
     def forward(self, z):
         return self.discriminator(z)
+
 
 class VAE(nn.Module):
 
