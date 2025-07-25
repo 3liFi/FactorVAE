@@ -147,7 +147,7 @@ def train_model(train_dataset, params: HyperParams):
     trainer.fit(vae_module, train_loader)
 
     # export gif from training
-    gif_extractor.export_gif("gifs/test.gif")
+    gif_extractor.export_gif("../../gifs/test.gif")
 
     # save model after training
-    trainer.save_checkpoint("vae_model_factor_chest.ckpt")
+    trainer.save_checkpoint("../../vae_model_factor_chest.ckpt")

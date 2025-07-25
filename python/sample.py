@@ -6,7 +6,7 @@ from model.vae import HyperParams, LATENT_DIM
 from torch.utils.data import DataLoader
 
 
-def load_trainer_from_model_path(model_path="vae_model_factor_chest.ckpt", hyper_params=HyperParams()) -> VAELightning:
+def load_trainer_from_model_path(model_path="../vae_model_factor_chest.ckpt", hyper_params=HyperParams()) -> VAELightning:
     """
     This function will return a VAELightning instance with the model from the model_path loaded.
 
@@ -25,7 +25,7 @@ def load_trainer_from_model_path(model_path="vae_model_factor_chest.ckpt", hyper
     return trainer
 
 
-def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", hyper_params=HyperParams(), n=64):
+def sample_images(model_path="../saved_models/vae_model_07_07_3.ckpt", hyper_params=HyperParams(), n=64):
     """
     This function uses a trained model to to sample n random images from the VAE. To do that, the latent vector is randomized.
     The images will be displayed in a plot.

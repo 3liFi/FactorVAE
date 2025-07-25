@@ -31,4 +31,4 @@ if __name__ == "__main__":
     elif args.mode == 'replicate':
         replicate_images(val_dataset, load_trainer_from_model_path())
     elif args.mode == 'latent':
-        sample_latent_changes(val_dataset)
+        sample_latent_changes(val_dataset, load_trainer_from_model_path())
