@@ -1,4 +1,6 @@
 from torch.utils.data import DataLoader
+
+import sample
 from gif_extractor import GifExtractor
 from vae import VAE, vae_loss as vae_loss_fc, DiscriminatorModel
 import pytorch_lightning as pl
@@ -114,7 +116,8 @@ class EpochEndCallback(Callback):
         self.gif_extractor = gif_extractor
 
     def on_train_epoch_end(self, trainer, pl_module):
-        self.gif_extractor.auto_sample_replicate_image_figure(cast(VAELightning, pl_module))
+        self.gif_extractor.append_figure(
+            sample.replicate_images(self.gif_extractor.dataset, cast(VAELightning, pl_module), show=False, save=False))
 
 
 def train_model(train_dataset, params: HyperParams):
