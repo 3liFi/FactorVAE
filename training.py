@@ -10,7 +10,15 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import Callback
 from typing import cast
 
+
 class VAELightning(pl.LightningModule):
+    """
+    An implementation of PyTorch Lightning. We use an adversarial approach documented in the paper FactorVAE (https://arxiv.org/pdf/1802.05983) that
+    trains both a Discriminator model, and the traditional VAE. For that reason, we cannot use automatic_optimization.
+
+    There is one optimizer for the Discriminator and one for the VAE. The Discriminator is trained on the output of the VAE, and the VAE uses the output of the Discriminator in the loss calculation.\
+    """
+
     def __init__(self, latent_dim, params: HyperParams):
         super().__init__()
         self.automatic_optimization = False
@@ -28,7 +36,6 @@ class VAELightning(pl.LightningModule):
         # Send data through VAE
         recon, mu, logvar, z = self.vae(x)
 
-        # Log mu and logvar to TensorBoard
         if self.global_step % 100 == 0 and self.logger and hasattr(self.logger.experiment, "add_histogram"):
             self.logger.experiment.add_histogram("mu", mu, self.global_step)
             self.logger.experiment.add_histogram("logvar", logvar, self.global_step)
@@ -97,65 +104,6 @@ class VAELightning(pl.LightningModule):
 
         return [opt_vae, opt_disc]
 
-# TODO: Maybe throw out? Not really necessary for public repo imo
-"""
-def get_model_similarity_score(dataset, vae_lightning: VAELightning) -> int:
-    val_loader = DataLoader(dataset, batch_size=10, shuffle=False)
-    x_batch, _ = next(iter(val_loader))
-
-    #x_batch = x_batch.to(trainer.device)
-    mu, logvar = vae_lightning.model.encoder(x_batch)
-    z = mu
-    reconstructed = vae_lightning.model.decoder(z)
-
-    total_ssim_score = 0
-    for i in range(0, len(x_batch)):
-        total_ssim_score += compute_ssim(reconstructed[i], x_batch[i])
-
-    return total_ssim_score / len(x_batch)
-
-def optimize_hyper_params_with_optuna():
-    study = optuna.create_study(direction="maximize") 
-    study.optimize(objective, n_trials=50)
-
-    vis.plot_optimization_history(study).show()
-    vis.plot_param_importances(study).show()
-    vis.plot_parallel_coordinate(study).show()
-
-    joblib.dump(study, "vae_study_0.pkl")
-
-def objective(trial):
-    transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=1),
-        transforms.CenterCrop((28, 28)),
-        transforms.ToTensor()
-    ])
-
-    train_dataset = PathMNIST(split='train', download=True, transform=transform)
-    val_dataset = PathMNIST(split='val', download=True, transform=transform)
-
-    kernel_size = trial.suggest_categorical("kernel_size", [3, 5, 7])
-    stride = trial.suggest_int("stride", 1, 2)
-    padding = trial.suggest_categorical("padding", [0, kernel_size // 2])
-    epochs = trial.suggest_int("epochs", 5, 35, 5)
-
-    trainer = pl.Trainer(
-        max_epochs=epochs,
-        accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        enable_progress_bar=False
-    )
-
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=5, persistent_workers=True)
-    val_loader = DataLoader(val_dataset, batch_size=64)
-
-    model = VAELightning(LATENT_DIM, HyperParams(kernel_size, stride, padding))
-
-    trainer.fit(model, train_loader, val_loader)
-
-    # Use visual comparison metric or val loss
-    #return trainer.callback_metrics["train_loss"].item()
-    return get_model_similarity_score(val_dataset, model)
-"""
 
 class EpochEndCallback(Callback):
     """
@@ -167,6 +115,7 @@ class EpochEndCallback(Callback):
 
     def on_train_epoch_end(self, trainer, pl_module):
         self.gif_extractor.auto_sample_replicate_image_figure(cast(VAELightning, pl_module))
+
 
 def train_model(train_dataset, params: HyperParams):
     """
