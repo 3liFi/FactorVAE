@@ -1,9 +1,9 @@
 from medmnist import INFO
 from torchvision import transforms
-from training import train_model
-from sample import sample_images, replicate_images, sample_latent_changes
+from model.training import train_model
+from model.sample import sample_images, replicate_images, sample_latent_changes
 import argparse
-from vae import HyperParams
+from model.vae import HyperParams
 
 data_flag = 'chestmnist'
 download = True

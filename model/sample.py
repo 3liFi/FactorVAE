@@ -6,7 +6,7 @@ from vae import HyperParams, LATENT_DIM
 from torch.utils.data import DataLoader
 
 
-def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", hyper_params=HyperParams(), n=64):
+def sample_images(model_path="../saved_models/vae_model_07_07_3.ckpt", hyper_params=HyperParams(), n=64):
     """
     This function uses a trained model to to sample n random images from the VAE. To do that, the latent vector is randomized.
     The images will be displayed in a plot.
@@ -34,7 +34,7 @@ def sample_images(model_path="saved_models/vae_model_07_07_3.ckpt", hyper_params
     plt.axis('off')
     plt.show()
 
-def replicate_images(dataset, model_path="vae_model_factor_chest.ckpt", hyper_params=HyperParams()):
+def replicate_images(dataset, model_path="../vae_model_factor_chest.ckpt", hyper_params=HyperParams()):
     """
     This function uses a trained model to replicate the first 10 images of the given dataset. It will display a grid of both the original
     and the generated images.
@@ -71,7 +71,7 @@ def replicate_images(dataset, model_path="vae_model_factor_chest.ckpt", hyper_pa
     plt.show()
 
 
-def sample_latent_changes(dataset, model_path="vae_model_factor_chest.ckpt", hyper_params=HyperParams()):
+def sample_latent_changes(dataset, model_path="../vae_model_factor_chest.ckpt", hyper_params=HyperParams()):
     """
     This function visualizes the latent vector that the given model generates for the first image from the given dataset. For each latent dimension,
     it displays one row which makes isolated changes to that specific dimension. The value is changed from -3 to +3 in increments of 0.5. In the rightmost column,
