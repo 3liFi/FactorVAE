@@ -130,6 +130,7 @@ To install required packages:
 ````
 pip install -r requirements.txt
 ````
+Please note that this does not install torch with CUDA support. If your machine supports CUDA, we strongly recommend using the CUDA enabled versions.
 
 There are several ways to start the project. To train a model with your own parameters, use:
 ````
