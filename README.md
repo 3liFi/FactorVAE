@@ -65,7 +65,7 @@ a $5x5$ output again.
     <em>Architecture of our decoder.</em>
 </p>
 
-The decoder is a network with $\approx 1\space \text{mio}$ parameters. The two outputs are the confidence for
+The discriminator is a network with $\approx 1\space \text{mio}$ parameters. The two outputs are the confidence for
 'real' and permuted latent vectors, respectively.
 <p align="center">
     <img src="assets/discriminator_architecture.png" alt="Latent space" width="80%"/>
