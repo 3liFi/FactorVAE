@@ -1,7 +1,7 @@
 # A practical implementation of FactorVAE 
 ![MIT License](https://img.shields.io/badge/license-MIT-green) ![Python 3.9](https://img.shields.io/badge/python-3.9-blue) ![PyTorch](https://img.shields.io/badge/framework-PyTorch-orange) 
 
-A PyTorch implementation of a variational autoencoder that achieving disentanglement through
+A PyTorch implementation of a variational autoencoder achieving disentanglement through
 the FactorVAE concept [[1]](#1). 
 Trained on ChestMNIST (dataset of X-ray chest images) using PyTorch.
 
